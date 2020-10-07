@@ -5,19 +5,7 @@ const port = 3000;
 
 app.use(bodyParser.json());
 
-const jsonKeys = [
-  "title",
-  "desc",
-  "category",
-  "location",
-  "images",
-  "price",
-  "date",
-  "deliveryType",
-  "name",
-  "tel",
-];
-
+// example item resource
 let items = [
   {
     id: 1,
@@ -35,13 +23,27 @@ let items = [
 ];
 
 function testRequestBody(requestBody) {
+  // Keys that request body object should contain
+  const jsonKeys = [
+    "title",
+    "desc",
+    "category",
+    "location",
+    "images",
+    "price",
+    "date",
+    "deliveryType",
+    "name",
+    "tel",
+  ];
   let missingKeys = [];
+  // loop through keys and if request object doesn't contain a key, add it to the missing keys list
   jsonKeys.forEach((element) => {
     if (!requestBody.hasOwnProperty(element)) {
-      console.log(element);
       missingKeys.push(element);
     }
   });
+  // if any missing keys was found, return them
   if (missingKeys.length > 0) {
     return missingKeys;
   } else {
@@ -54,6 +56,7 @@ app.get("/item", (req, res) => {
 });
 
 app.get("/item/:id", (req, res) => {
+  // find json object from resources by id
   const result = items.find((e) => e.id == req.params.id);
   if (result !== undefined) {
     res.json({ result });
@@ -63,8 +66,10 @@ app.get("/item/:id", (req, res) => {
 });
 
 app.post("/item", (req, res) => {
+  // test the request body for including all the keys
   t = testRequestBody(req.body);
   if (t) {
+    // if test returns keys, send bar request status and the missing keys
     res.status(400).send("Bad Request, Missing Key(s): " + t);
   } else {
     const newItem = {
@@ -108,6 +113,41 @@ app.put("/item/:id", (req, res) => {
     }
   } else {
     res.status(404).send("Item Id Not Found");
+  }
+});
+
+app.delete("/item/:id", (req, res) => {
+  // find index of a json object from resources by id
+  const result = items.findIndex((e) => e.id == req.params.id);
+  if (result !== -1) {
+    items.splice(result, 1);
+    res.status(200).send("Item deleted, Id: " + req.params.id);
+  } else {
+    res.status(404).send("Item Id Not Found");
+  }
+});
+
+app.get("/item/search/:searchtype/:keyword", (req, res) => {
+  // test if "searchtype" path parameter is supported
+  if (
+    req.params.searchtype.toLowerCase() === "category" ||
+    req.params.searchtype.toLowerCase() === "location" ||
+    req.params.searchtype.toLowerCase() === "date"
+  ) {
+    // find all json objects from resources that contains the given keyword in a given key
+    const results = items.filter((e) =>
+      e[req.params.searchtype]
+        .toLowerCase()
+        .includes(req.params.keyword.toLowerCase())
+    );
+    // if any objects found
+    if (results.length > 0) {
+      res.json({ results });
+    } else {
+      res.status(404).send("No results found");
+    }
+  } else {
+    res.status(400).send("Bad Request: Searchtype not supported");
   }
 });
 
