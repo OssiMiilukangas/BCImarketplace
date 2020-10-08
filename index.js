@@ -1,9 +1,27 @@
 const express = require("express");
 const bodyParser = require("body-parser");
 const app = express();
+const bcrypt = require("bcryptjs");
+const passport = require("passport");
+const BasicStrategy = require("passport-http").BasicStrategy;
+const jwt = require("jsonwebtoken");
+const jwtStrategy = require("passport-jwt").Strategy,
+  ExtractJwt = require("passport-jwt").ExtractJwt;
+const jwtSecretKey = require("./jwt-key.json");
 const port = 3000;
 
 app.use(bodyParser.json());
+
+// example user resource
+let users = [
+  {
+    id: 1,
+    username: "Ossi",
+    email: "ossi.miilukangas@hotmail.com",
+    password: "ossi123",
+    validApiKey: null,
+  },
+];
 
 // example item resource
 let items = [
@@ -22,7 +40,108 @@ let items = [
   },
 ];
 
-function testRequestBody(requestBody) {
+// Http basic authentication strategy
+passport.use(
+  new BasicStrategy(function (username, password, done) {
+    // find user from resources by username
+    const user = users.find((e) => e.username == username);
+    // if user not found
+    if (user == undefined) {
+      return done(null, false, { message: "HTTP Basic username not found" });
+    }
+
+    // compare passwords
+    if (bcrypt.compareSync(password, user.password) == false) {
+      return done(null, false, { message: "HTTP Basic password not found" });
+    }
+    return done(null, user);
+  })
+);
+
+// JWT authentication strategy
+let options = {};
+
+options.jwtFromRequest = ExtractJwt.fromAuthHeaderAsBearerToken();
+options.secretOrKey = jwtSecretKey.secret;
+
+passport.use(
+  new jwtStrategy(options, function (jwt_payload, done) {
+    // test if the token is expired
+    const now = Date.now() / 1000;
+    if (jwt_payload.exp > now) {
+      done(null, jwt_payload.user);
+    } else {
+      done(null, false);
+    }
+  })
+);
+
+/*********************************************
+ * USER ENDPOINTS
+ ********************************************/
+
+app.post("/user/register", (req, res) => {
+  // tests that request body has required data
+  if ("username" in req.body == false) {
+    res.status(400).send("Bad Request: Missing username");
+    return;
+  }
+  if ("password" in req.body == false) {
+    res.status(400).send("Bad Request: Missing password");
+    return;
+  }
+  if ("email" in req.body == false) {
+    res.status(400).send("Bad Request: Missing email");
+    return;
+  }
+
+  // hash the password
+  const hashedPassword = bcrypt.hashSync(req.body.password, 6);
+  console.log(hashedPassword);
+
+  const newUser = {
+    id: users.length + 1,
+    username: req.body.username,
+    email: req.body.email,
+    password: hashedPassword,
+    validApiKey: null,
+  };
+  users.push(newUser);
+
+  res.status(201).json({ status: "created" });
+});
+
+app.get(
+  "/user/login",
+  passport.authenticate("basic", { session: false }),
+  (req, res) => {
+    // construct body and set options
+    const body = {
+      id: req.user.id,
+      email: req.user.email,
+    };
+    const payload = {
+      user: body,
+    };
+    const options = {
+      expiresIn: "1d",
+    };
+    // create and return token
+    const token = jwt.sign(payload, jwtSecretKey.secret, options);
+    res.status(200).json({ token });
+  }
+);
+
+// get users for testing
+app.get("/user", (req, res) => {
+  res.json({ users });
+});
+
+/*********************************************
+ * ITEM ENDPOINTS
+ ********************************************/
+
+function testPostItemBody(requestBody) {
   // Keys that request body object should contain
   const jsonKeys = [
     "title",
@@ -39,7 +158,7 @@ function testRequestBody(requestBody) {
   let missingKeys = [];
   // loop through keys and if request object doesn't contain a key, add it to the missing keys list
   jsonKeys.forEach((element) => {
-    if (!requestBody.hasOwnProperty(element)) {
+    if (element in requestBody === false) {
       missingKeys.push(element);
     }
   });
@@ -67,7 +186,7 @@ app.get("/item/:id", (req, res) => {
 
 app.post("/item", (req, res) => {
   // test the request body for including all the keys
-  t = testRequestBody(req.body);
+  t = testPostItemBody(req.body);
   if (t) {
     // if test returns keys, send bar request status and the missing keys
     res.status(400).send("Bad Request, Missing Key(s): " + t);
@@ -100,7 +219,7 @@ app.put("/item/:id", (req, res) => {
     // loop through keys in request body object
     for (const key in req.body) {
       // if key from request body exists in resource object
-      if (result.hasOwnProperty(key)) {
+      if (key in result) {
         result[key] = req.body[key];
         resourceModified = true;
       }
