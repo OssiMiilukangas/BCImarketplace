@@ -1,6 +1,6 @@
 const express = require("express");
 const bodyParser = require("body-parser");
-const app = express();
+const fs = require("fs");
 const bcrypt = require("bcryptjs");
 const passport = require("passport");
 const BasicStrategy = require("passport-http").BasicStrategy;
@@ -8,11 +8,14 @@ const jwt = require("jsonwebtoken");
 const jwtStrategy = require("passport-jwt").Strategy,
   ExtractJwt = require("passport-jwt").ExtractJwt;
 const jwtSecretKey = require("./jwt-key.json");
+const multer = require("multer");
+const multerUpload = multer({ dest: "uploads/" });
+const app = express();
 const port = 3000;
 
 app.use(bodyParser.json());
 
-// example user resource
+// users array with example user resource
 let users = [
   {
     id: 1,
@@ -22,7 +25,7 @@ let users = [
   },
 ];
 
-// example item resource
+// items array with example item resource
 let items = [
   {
     id: 1,
@@ -45,6 +48,7 @@ passport.use(
   new BasicStrategy(function (username, password, done) {
     // find user from resources by username
     const user = users.find((e) => e.username == username);
+
     // if user not found
     if (user == undefined) {
       return done(null, false, { message: "HTTP Basic username not found" });
@@ -119,12 +123,15 @@ app.get(
       username: req.user.username,
       email: req.user.email,
     };
+
     const payload = {
       user: body,
     };
+
     const options = {
       expiresIn: "600s",
     };
+
     // create and return token
     const token = jwt.sign(payload, jwtSecretKey.secret, options);
     res.status(200).json({ token });
@@ -147,7 +154,6 @@ function testPostItemBody(requestBody) {
     "desc",
     "category",
     "location",
-    "images",
     "price",
     "date",
     "deliveryType",
@@ -155,12 +161,14 @@ function testPostItemBody(requestBody) {
     "tel",
   ];
   let missingKeys = [];
+
   // loop through keys and if request object doesn't contain a key, add it to the missing keys list
   jsonKeys.forEach((element) => {
     if (element in requestBody === false) {
       missingKeys.push(element);
     }
   });
+
   // if any missing keys was found, return them
   if (missingKeys.length > 0) {
     return missingKeys;
@@ -186,31 +194,38 @@ app.get("/item/:id", (req, res) => {
 app.post(
   "/item",
   passport.authenticate("jwt", { session: false }),
+  multerUpload.array("image", 4),
   (req, res) => {
     // test the request body for including all the keys
     t = testPostItemBody(req.body);
     if (t) {
       // if test returns keys, send bad request status and the missing keys
       res.status(400).send("Bad Request, Missing Key(s): " + t);
-    } else {
-      const newItem = {
-        id: items.length + 1,
-        userId: req.user.id, // id of the user who created the item
-        title: req.body.title,
-        desc: req.body.desc,
-        category: req.body.category,
-        location: req.body.location,
-        images: req.body.images,
-        price: req.body.price,
-        date: req.body.date,
-        deliveryType: req.body.deliveryType,
-        name: req.body.name,
-        tel: req.body.tel,
-      };
-      items.push(newItem);
-
-      res.status(201).json(items[items.length - 1]);
+      return;
     }
+
+    //upload images
+    req.files.forEach((f) => {
+      fs.renameSync(f.path, "./uploads/" + f.originalname);
+    });
+
+    const newItem = {
+      id: items.length + 1,
+      userId: req.user.id, // id of the user who created the item
+      title: req.body.title,
+      desc: req.body.desc,
+      category: req.body.category,
+      location: req.body.location,
+      images: req.files,
+      price: req.body.price,
+      date: req.body.date,
+      deliveryType: req.body.deliveryType,
+      name: req.body.name,
+      tel: req.body.tel,
+    };
+    items.push(newItem);
+
+    res.status(201).json(items[items.length - 1]);
   }
 );
 
@@ -220,16 +235,19 @@ app.put(
   (req, res) => {
     // find json object from resources by id
     const result = items.find((e) => e.id == req.params.id);
+
     // test that the object exists
     if (result === undefined) {
       res.status(404).send("Item Id Not Found");
       return;
     }
+
     // test that the user is authorized to modify the resource
     if (result.userId !== req.user.id) {
       res.status(403).send("Forbidden: User not authorized");
       return;
     }
+
     let resourceModified = false;
     // loop through keys in request body object
     for (const key in req.body) {
@@ -239,6 +257,7 @@ app.put(
         resourceModified = true;
       }
     }
+
     // test if anything was modified
     if (resourceModified) {
       res.status(200).json(result);
@@ -254,11 +273,13 @@ app.delete(
   (req, res) => {
     // find index of a json object from resources by id
     const result = items.findIndex((e) => e.id == req.params.id);
+
     // test that index was found
     if (result === -1) {
       res.status(404).send("Item Id Not Found");
       return;
     }
+
     // test that the user is authorized to modify the resource
     if (items[result].userId !== req.user.id) {
       res.status(403).send("Forbidden: User not authorized");
@@ -279,12 +300,14 @@ app.get("/item/search/:searchtype/:keyword", (req, res) => {
     res.status(400).send("Bad Request: Searchtype not supported");
     return;
   }
+
   // find all json objects from resources that contains the given keyword in a given key
   const results = items.filter((e) =>
     e[req.params.searchtype]
       .toLowerCase()
       .includes(req.params.keyword.toLowerCase())
   );
+
   // if any objects found
   if (results.length > 0) {
     res.json({ results });
