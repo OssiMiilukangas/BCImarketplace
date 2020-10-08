@@ -16,10 +16,9 @@ app.use(bodyParser.json());
 let users = [
   {
     id: 1,
-    username: "Ossi",
+    username: "ossi",
     email: "ossi.miilukangas@hotmail.com",
-    password: "ossi123",
-    validApiKey: null,
+    password: bcrypt.hashSync("ossi123", 6),
   },
 ];
 
@@ -27,6 +26,7 @@ let users = [
 let items = [
   {
     id: 1,
+    userId: 1,
     title: "Testituote",
     desc: "Helvetin hyvä tuote",
     category: "Ajoneuvot",
@@ -97,18 +97,16 @@ app.post("/user/register", (req, res) => {
 
   // hash the password
   const hashedPassword = bcrypt.hashSync(req.body.password, 6);
-  console.log(hashedPassword);
 
   const newUser = {
     id: users.length + 1,
     username: req.body.username,
     email: req.body.email,
     password: hashedPassword,
-    validApiKey: null,
   };
   users.push(newUser);
 
-  res.status(201).json({ status: "created" });
+  res.status(201).json({ newUser });
 });
 
 app.get(
@@ -118,13 +116,14 @@ app.get(
     // construct body and set options
     const body = {
       id: req.user.id,
+      username: req.user.username,
       email: req.user.email,
     };
     const payload = {
       user: body,
     };
     const options = {
-      expiresIn: "1d",
+      expiresIn: "600s",
     };
     // create and return token
     const token = jwt.sign(payload, jwtSecretKey.secret, options);
@@ -184,38 +183,54 @@ app.get("/item/:id", (req, res) => {
   }
 });
 
-app.post("/item", (req, res) => {
-  // test the request body for including all the keys
-  t = testPostItemBody(req.body);
-  if (t) {
-    // if test returns keys, send bar request status and the missing keys
-    res.status(400).send("Bad Request, Missing Key(s): " + t);
-  } else {
-    const newItem = {
-      id: items.length + 1,
-      title: req.body.title,
-      desc: req.body.desc,
-      category: req.body.category,
-      location: req.body.location,
-      images: req.body.images,
-      price: req.body.price,
-      date: req.body.date,
-      deliveryType: req.body.deliveryType,
-      name: req.body.name,
-      tel: req.body.tel,
-    };
-    items.push(newItem);
+app.post(
+  "/item",
+  passport.authenticate("jwt", { session: false }),
+  (req, res) => {
+    // test the request body for including all the keys
+    t = testPostItemBody(req.body);
+    if (t) {
+      // if test returns keys, send bad request status and the missing keys
+      res.status(400).send("Bad Request, Missing Key(s): " + t);
+    } else {
+      const newItem = {
+        id: items.length + 1,
+        userId: req.user.id, // id of the user who created the item
+        title: req.body.title,
+        desc: req.body.desc,
+        category: req.body.category,
+        location: req.body.location,
+        images: req.body.images,
+        price: req.body.price,
+        date: req.body.date,
+        deliveryType: req.body.deliveryType,
+        name: req.body.name,
+        tel: req.body.tel,
+      };
+      items.push(newItem);
 
-    res.status(201).json(items[items.length - 1]);
+      res.status(201).json(items[items.length - 1]);
+    }
   }
-});
+);
 
-app.put("/item/:id", (req, res) => {
-  let resourceModified = false;
-  // find json object from resources by id
-  const result = items.find((e) => e.id == req.params.id);
-  // if object found
-  if (result !== undefined) {
+app.put(
+  "/item/:id",
+  passport.authenticate("jwt", { session: false }),
+  (req, res) => {
+    // find json object from resources by id
+    const result = items.find((e) => e.id == req.params.id);
+    // test that the object exists
+    if (result === undefined) {
+      res.status(404).send("Item Id Not Found");
+      return;
+    }
+    // test that the user is authorized to modify the resource
+    if (result.userId !== req.user.id) {
+      res.status(403).send("Forbidden: User not authorized");
+      return;
+    }
+    let resourceModified = false;
     // loop through keys in request body object
     for (const key in req.body) {
       // if key from request body exists in resource object
@@ -230,43 +245,51 @@ app.put("/item/:id", (req, res) => {
     } else {
       res.status(404).send("Couldn't find any corresponding keys to modify");
     }
-  } else {
-    res.status(404).send("Item Id Not Found");
   }
-});
+);
 
-app.delete("/item/:id", (req, res) => {
-  // find index of a json object from resources by id
-  const result = items.findIndex((e) => e.id == req.params.id);
-  if (result !== -1) {
+app.delete(
+  "/item/:id",
+  passport.authenticate("jwt", { session: false }),
+  (req, res) => {
+    // find index of a json object from resources by id
+    const result = items.findIndex((e) => e.id == req.params.id);
+    // test that index was found
+    if (result === -1) {
+      res.status(404).send("Item Id Not Found");
+      return;
+    }
+    // test that the user is authorized to modify the resource
+    if (items[result].userId !== req.user.id) {
+      res.status(403).send("Forbidden: User not authorized");
+      return;
+    }
     items.splice(result, 1);
     res.status(200).send("Item deleted, Id: " + req.params.id);
-  } else {
-    res.status(404).send("Item Id Not Found");
   }
-});
+);
 
 app.get("/item/search/:searchtype/:keyword", (req, res) => {
   // test if "searchtype" path parameter is supported
   if (
-    req.params.searchtype.toLowerCase() === "category" ||
-    req.params.searchtype.toLowerCase() === "location" ||
-    req.params.searchtype.toLowerCase() === "date"
+    req.params.searchtype.toLowerCase() !== "category" &&
+    req.params.searchtype.toLowerCase() !== "location" &&
+    req.params.searchtype.toLowerCase() !== "date"
   ) {
-    // find all json objects from resources that contains the given keyword in a given key
-    const results = items.filter((e) =>
-      e[req.params.searchtype]
-        .toLowerCase()
-        .includes(req.params.keyword.toLowerCase())
-    );
-    // if any objects found
-    if (results.length > 0) {
-      res.json({ results });
-    } else {
-      res.status(404).send("No results found");
-    }
-  } else {
     res.status(400).send("Bad Request: Searchtype not supported");
+    return;
+  }
+  // find all json objects from resources that contains the given keyword in a given key
+  const results = items.filter((e) =>
+    e[req.params.searchtype]
+      .toLowerCase()
+      .includes(req.params.keyword.toLowerCase())
+  );
+  // if any objects found
+  if (results.length > 0) {
+    res.json({ results });
+  } else {
+    res.status(404).send("No results found");
   }
 });
 
