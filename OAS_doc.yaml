@@ -212,7 +212,9 @@ components:
       type: object
       properties:
         id:
-          type: string
+          type: integer
+        userId:
+          type: integer
         title:
           type: string
         desc:
@@ -237,6 +239,7 @@ components:
           type: string
       required:
         - id
+        - userId
         - title
         - desc
         - category
