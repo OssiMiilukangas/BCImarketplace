@@ -183,9 +183,9 @@ app.get("/item", (req, res) => {
 
 app.get("/item/:id", (req, res) => {
   // find json object from resources by id
-  const result = items.find((e) => e.id == req.params.id);
-  if (result !== undefined) {
-    res.json({ result });
+  const item = items.find((e) => e.id == req.params.id);
+  if (item !== undefined) {
+    res.json({ item });
   } else {
     res.status(404).send("Item Id Not Found");
   }
@@ -205,9 +205,13 @@ app.post(
     }
 
     //upload images
-    req.files.forEach((f) => {
-      fs.renameSync(f.path, "./uploads/" + f.originalname);
-    });
+    if(req.hasOwnProperty("files")) {
+      if(req.files.length > 0) {
+        req.files.forEach((f) => {
+          fs.renameSync(f.path, "./uploads/" + f.originalname);
+        });
+      }
+    }
 
     const newItem = {
       id: items.length + 1,
@@ -262,7 +266,7 @@ app.put(
     if (resourceModified) {
       res.status(200).json(result);
     } else {
-      res.status(404).send("Couldn't find any corresponding keys to modify");
+      res.status(400).send("No corresponding keys in item to modify");
     }
   }
 );
