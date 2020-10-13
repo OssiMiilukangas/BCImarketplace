@@ -1,60 +1,374 @@
-
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Swagger UI</title>
-  <link href="https://fonts.googleapis.com/css?family=Open+Sans:400,700|Source+Code+Pro:300,600|Titillium+Web:400,600,700" rel="stylesheet">
-  <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/3.24.2/swagger-ui.css" >
-  <style>
-    html
-    {
-      box-sizing: border-box;
-      overflow: -moz-scrollbars-vertical;
-      overflow-y: scroll;
-    }
-    *,
-    *:before,
-    *:after
-    {
-      box-sizing: inherit;
-    }
+  <head>
+    <meta charset="UTF-8" />
+    <title>Swagger UI</title>
+    <link
+      href="https://fonts.googleapis.com/css?family=Open+Sans:400,700|Source+Code+Pro:300,600|Titillium+Web:400,600,700"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      type="text/css"
+      href="https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/3.24.2/swagger-ui.css"
+    />
+    <style>
+      html {
+        box-sizing: border-box;
+        overflow: -moz-scrollbars-vertical;
+        overflow-y: scroll;
+      }
+      *,
+      *:before,
+      *:after {
+        box-sizing: inherit;
+      }
 
-    body {
-      margin:0;
-      background: #fafafa;
-    }
-  </style>
-</head>
-<body>
+      body {
+        margin: 0;
+        background: #fafafa;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="swagger-ui"></div>
 
-<div id="swagger-ui"></div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/3.24.2/swagger-ui-bundle.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/3.24.2/swagger-ui-standalone-preset.js"></script>
+    <script>
+      window.onload = function () {
+        var spec = {
+          openapi: "3.0.0",
+          info: { title: "BCImarketplace", version: "1.0" },
+          servers: [{ url: "http://3.86.148.236/" }],
+          paths: {
+            "/item/{id}": {
+              put: {
+                summary: "Put item",
+                tags: [],
+                responses: {
+                  200: {
+                    description: "OK",
+                    content: {
+                      "application/json": {
+                        schema: { $ref: "#/components/schemas/item" },
+                      },
+                    },
+                  },
+                  400: { description: "Bad Request" },
+                  401: { description: "Unauthorized" },
+                  403: { description: "Forbidden" },
+                  404: { description: "Not Found" },
+                },
+                operationId: "put-item",
+                description: "Modify existing item information",
+                requestBody: {
+                  content: {
+                    "application/json": {
+                      schema: { $ref: "#/components/schemas/item_without_id" },
+                    },
+                  },
+                },
+              },
+              parameters: [
+                {
+                  schema: { type: "string" },
+                  name: "id",
+                  in: "path",
+                  required: true,
+                },
+              ],
+              get: {
+                summary: "Get item",
+                tags: [],
+                responses: {
+                  200: {
+                    description: "OK",
+                    content: {
+                      "application/json": {
+                        schema: { $ref: "#/components/schemas/item" },
+                      },
+                    },
+                  },
+                  404: { description: "Not Found" },
+                },
+                operationId: "get-item-id",
+                description: "Get item by id",
+              },
+              delete: {
+                summary: "Delete item",
+                tags: [],
+                responses: {
+                  200: { description: "OK" },
+                  401: { description: "Unauthorized" },
+                  403: { description: "Forbidden" },
+                  404: { description: "Not Found" },
+                },
+                operationId: "delete-item-id",
+                description: "Delete an item from the marketplace",
+              },
+            },
+            "/item": {
+              post: {
+                summary: "Post item",
+                tags: [],
+                responses: {
+                  201: { description: "Created" },
+                  400: { description: "Bad Request" },
+                  401: { description: "Unauthorized" },
+                },
+                operationId: "post-item",
+                description: "Create a new item to sell in the marketplace",
+                requestBody: {
+                  content: {
+                    "application/json": {
+                      schema: { $ref: "#/components/schemas/item_without_id" },
+                    },
+                  },
+                },
+              },
+              get: {
+                summary: "Get all items",
+                tags: [],
+                responses: {
+                  200: {
+                    description: "OK",
+                    content: {
+                      "application/json": {
+                        schema: {
+                          type: "array",
+                          items: { $ref: "#/components/schemas/item" },
+                        },
+                      },
+                    },
+                  },
+                },
+                operationId: "get-item",
+                description: "Get all items",
+              },
+            },
+            "/item/search/{category}/{keyword}": {
+              parameters: [
+                {
+                  schema: { type: "string" },
+                  name: "category",
+                  in: "path",
+                  required: true,
+                  description: "",
+                },
+                {
+                  schema: { type: "string" },
+                  name: "keyword",
+                  in: "path",
+                  required: true,
+                },
+              ],
+              get: {
+                summary: "Search items",
+                tags: [],
+                responses: {
+                  200: {
+                    description: "OK",
+                    content: {
+                      "application/json": {
+                        schema: {
+                          type: "array",
+                          items: { $ref: "#/components/schemas/item" },
+                        },
+                      },
+                    },
+                  },
+                  400: { description: "Bad Request" },
+                  404: { description: "Not Found" },
+                },
+                operationId: "get-item-search-category",
+                description:
+                  "Search and get items from the marketplace by category",
+              },
+            },
+            "/user/register": {
+              post: {
+                summary: "Register",
+                tags: [],
+                responses: {
+                  201: {
+                    description: "Created",
+                    content: {
+                      "application/json": {
+                        schema: { $ref: "#/components/schemas/user" },
+                      },
+                    },
+                  },
+                  400: { description: "Bad Request" },
+                },
+                operationId: "post-user-register",
+                description: "Register a new user",
+                requestBody: {
+                  content: {
+                    "application/json": {
+                      schema: {
+                        type: "object",
+                        properties: {
+                          username: { type: "string" },
+                          email: { type: "string" },
+                          password: { type: "string" },
+                        },
+                        required: ["username", "email", "password"],
+                      },
+                    },
+                  },
+                  description: "",
+                },
+              },
+            },
+            "/user/login": {
+              get: {
+                summary: "Login",
+                tags: [],
+                responses: {
+                  200: {
+                    description: "OK",
+                    content: {
+                      "application/json": {
+                        schema: {
+                          type: "object",
+                          properties: { token: { type: "string" } },
+                        },
+                      },
+                    },
+                  },
+                  401: { description: "Unauthorized" },
+                },
+                operationId: "get-user-login",
+                parameters: [
+                  {
+                    schema: { type: "string" },
+                    in: "header",
+                    name: "Username",
+                    description: "Basic HTTP",
+                    required: true,
+                  },
+                  {
+                    schema: { type: "string" },
+                    in: "header",
+                    name: "Password",
+                    description: "Basic HTTP",
+                    required: true,
+                  },
+                ],
+              },
+            },
+            "/users": {
+              get: {
+                summary: "Get all users",
+                tags: [],
+                responses: {
+                  200: {
+                    description: "OK",
+                    content: {
+                      "application/json": {
+                        schema: {
+                          type: "array",
+                          items: { $ref: "#/components/schemas/user" },
+                        },
+                      },
+                    },
+                  },
+                },
+                operationId: "get-users",
+                description: "Get all users",
+              },
+            },
+          },
+          components: {
+            schemas: {
+              item: {
+                title: "item",
+                type: "object",
+                properties: {
+                  id: { type: "integer" },
+                  userId: { type: "integer" },
+                  title: { type: "string" },
+                  desc: { type: "string" },
+                  category: { type: "string" },
+                  location: { type: "string" },
+                  images: { type: "array", items: { type: "object" } },
+                  price: { type: "number" },
+                  date: { type: "string" },
+                  deliveryType: { type: "string" },
+                  name: { type: "string" },
+                  tel: { type: "string" },
+                },
+                required: [
+                  "id",
+                  "userId",
+                  "title",
+                  "desc",
+                  "category",
+                  "location",
+                  "images",
+                  "price",
+                  "date",
+                  "deliveryType",
+                  "name",
+                  "tel",
+                ],
+              },
+              item_without_id: {
+                title: "item_without_id",
+                type: "object",
+                properties: {
+                  title: { type: "string" },
+                  desc: { type: "string" },
+                  category: { type: "string" },
+                  location: { type: "string" },
+                  images: { type: "array", items: { type: "object" } },
+                  price: { type: "number" },
+                  date: { type: "string" },
+                  deliveryType: { type: "string" },
+                  name: { type: "string" },
+                  tel: { type: "string" },
+                },
+                required: [
+                  "title",
+                  "desc",
+                  "category",
+                  "location",
+                  "images",
+                  "price",
+                  "date",
+                  "deliveryType",
+                  "name",
+                  "tel",
+                ],
+              },
+              user: {
+                title: "user",
+                type: "object",
+                properties: {
+                  id: { type: "integer" },
+                  username: { type: "string" },
+                  email: { type: "string" },
+                  password: { type: "string" },
+                },
+                required: ["id", "username", "email", "password"],
+              },
+            },
+          },
+        };
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/3.24.2/swagger-ui-bundle.js"> </script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/3.24.2/swagger-ui-standalone-preset.js"> </script>
-<script>
-window.onload = function() {
+        // Build a system
+        const ui = SwaggerUIBundle({
+          spec: spec,
+          dom_id: "#swagger-ui",
+          deepLinking: true,
+          presets: [SwaggerUIBundle.presets.apis, SwaggerUIStandalonePreset],
+          plugins: [SwaggerUIBundle.plugins.DownloadUrl],
+          layout: "StandaloneLayout",
+        });
 
-  var spec = {"openapi": "3.0.0", "info": {"title": "BCImarketplace", "version": "1.0"}, "servers": [{"url": "http://localhost:3000"}], "paths": {"/item/{id}": {"put": {"summary": "Put item", "tags": [], "responses": {"200": {"description": "OK", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/item"}}}}, "400": {"description": "Bad Request"}, "401": {"description": "Unauthorized"}, "403": {"description": "Forbidden"}, "404": {"description": "Not Found"}}, "operationId": "put-item", "description": "Modify existing item information", "requestBody": {"content": {"application/json": {"schema": {"$ref": "#/components/schemas/item_without_id"}}}}}, "parameters": [{"schema": {"type": "string"}, "name": "id", "in": "path", "required": true}], "get": {"summary": "Get item", "tags": [], "responses": {"200": {"description": "OK", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/item"}}}}, "404": {"description": "Not Found"}}, "operationId": "get-item-id", "description": "Get item by id"}, "delete": {"summary": "Delete item", "tags": [], "responses": {"200": {"description": "OK"}, "401": {"description": "Unauthorized"}, "403": {"description": "Forbidden"}, "404": {"description": "Not Found"}}, "operationId": "delete-item-id", "description": "Delete an item from the marketplace"}}, "/item": {"post": {"summary": "Post item", "tags": [], "responses": {"201": {"description": "Created"}, "400": {"description": "Bad Request"}, "401": {"description": "Unauthorized"}}, "operationId": "post-item", "description": "Create a new item to sell in the marketplace", "requestBody": {"content": {"application/json": {"schema": {"$ref": "#/components/schemas/item_without_id"}}}}}, "get": {"summary": "Get all items", "tags": [], "responses": {"200": {"description": "OK", "content": {"application/json": {"schema": {"type": "array", "items": {"$ref": "#/components/schemas/item"}}}}}}, "operationId": "get-item", "description": "Get all items"}}, "/item/search/{category}/{keyword}": {"parameters": [{"schema": {"type": "string"}, "name": "category", "in": "path", "required": true, "description": ""}, {"schema": {"type": "string"}, "name": "keyword", "in": "path", "required": true}], "get": {"summary": "Search items", "tags": [], "responses": {"200": {"description": "OK", "content": {"application/json": {"schema": {"type": "array", "items": {"$ref": "#/components/schemas/item"}}}}}, "400": {"description": "Bad Request"}, "404": {"description": "Not Found"}}, "operationId": "get-item-search-category", "description": "Search and get items from the marketplace by category"}}, "/user/register": {"post": {"summary": "Register", "tags": [], "responses": {"201": {"description": "Created", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/user"}}}}, "400": {"description": "Bad Request"}}, "operationId": "post-user-register", "description": "Register a new user", "requestBody": {"content": {"application/json": {"schema": {"type": "object", "properties": {"username": {"type": "string"}, "email": {"type": "string"}, "password": {"type": "string"}}, "required": ["username", "email", "password"]}}}, "description": ""}}}, "/user/login": {"get": {"summary": "Login", "tags": [], "responses": {"200": {"description": "OK", "content": {"application/json": {"schema": {"type": "object", "properties": {"token": {"type": "string"}}}}}}, "401": {"description": "Unauthorized"}}, "operationId": "get-user-login", "parameters": [{"schema": {"type": "string"}, "in": "header", "name": "Username", "description": "Basic HTTP", "required": true}, {"schema": {"type": "string"}, "in": "header", "name": "Password", "description": "Basic HTTP", "required": true}]}}, "/users": {"get": {"summary": "Get all users", "tags": [], "responses": {"200": {"description": "OK", "content": {"application/json": {"schema": {"type": "array", "items": {"$ref": "#/components/schemas/user"}}}}}}, "operationId": "get-users", "description": "Get all users"}}}, "components": {"schemas": {"item": {"title": "item", "type": "object", "properties": {"id": {"type": "integer"}, "userId": {"type": "integer"}, "title": {"type": "string"}, "desc": {"type": "string"}, "category": {"type": "string"}, "location": {"type": "string"}, "images": {"type": "array", "items": {"type": "object"}}, "price": {"type": "number"}, "date": {"type": "string"}, "deliveryType": {"type": "string"}, "name": {"type": "string"}, "tel": {"type": "string"}}, "required": ["id", "userId", "title", "desc", "category", "location", "images", "price", "date", "deliveryType", "name", "tel"]}, "item_without_id": {"title": "item_without_id", "type": "object", "properties": {"title": {"type": "string"}, "desc": {"type": "string"}, "category": {"type": "string"}, "location": {"type": "string"}, "images": {"type": "array", "items": {"type": "object"}}, "price": {"type": "number"}, "date": {"type": "string"}, "deliveryType": {"type": "string"}, "name": {"type": "string"}, "tel": {"type": "string"}}, "required": ["title", "desc", "category", "location", "images", "price", "date", "deliveryType", "name", "tel"]}, "user": {"title": "user", "type": "object", "properties": {"id": {"type": "integer"}, "username": {"type": "string"}, "email": {"type": "string"}, "password": {"type": "string"}}, "required": ["id", "username", "email", "password"]}}}};
-
-  // Build a system
-  const ui = SwaggerUIBundle({
-    spec: spec,
-    dom_id: '#swagger-ui',
-    deepLinking: true,
-    presets: [
-      SwaggerUIBundle.presets.apis,
-      SwaggerUIStandalonePreset
-    ],
-    plugins: [
-      SwaggerUIBundle.plugins.DownloadUrl
-    ],
-    layout: "StandaloneLayout"
-  })
-
-  window.ui = ui
-}
-</script>
-</body>
-
+        window.ui = ui;
+      };
+    </script>
+  </body>
 </html>
