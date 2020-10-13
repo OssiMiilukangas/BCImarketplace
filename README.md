@@ -2,7 +2,7 @@
 
 Building Cloud Integration course API exercise
 
-API Hosted in AWS at: http://3.86.148.236/
+API base url: http://3.86.148.236/
 
 HTML document: http://www.students.oamk.fi/~t8mios00/doc.html
 
